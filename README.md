@@ -20,8 +20,3 @@
 ## 免责声明
 
 本项目仅供学习和研究使用，请遵守相关法律法规，不要用于任何违法用途。
-
-## 相关项目
-
-- [NapCatQQ](https://github.com/NapNeko/NapCatQQ) - 原始 NapCatQQ 项目
-- [sealdice-android](https://github.com/sealdice/sealdice-android) - 本项目的灵感来源，PRoot 方案原理参考

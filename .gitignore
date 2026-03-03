@@ -11,9 +11,22 @@ local.properties
 .DS_Store
 Thumbs.db
 
-# Keystore (不要提交密钥)
+# Keystore
 *.jks
 *.keystore
 
 # Local config
 *.local
+
+# Built files
+*.apk
+*.ap_
+*.aab
+*.dex
+
+# Assets (too large for git)
+app/src/main/assets/proot/
+app/src/main/assets/rootfs/
+*.tar
+*.tar.gz
+*.zip

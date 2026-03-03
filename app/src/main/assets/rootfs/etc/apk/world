@@ -1,8 +1,0 @@
-alpine-baselayout
-alpine-keys
-apk-tools
-busybox
-icu
-libc-utils
-shadow-login
-strace

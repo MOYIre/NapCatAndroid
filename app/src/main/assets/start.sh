@@ -1,5 +1,5 @@
 #!/bin/sh
-# NapCat for Android 启动脚本
+# sealdice project
 
 DIR=$(realpath $(dirname "$0"))
 
@@ -7,20 +7,20 @@ unset LD_PRELOAD
 export LD_LIBRARY_PATH=$DIR/proot:$LD_LIBRARY_PATH
 export PROOT_TMP_DIR=$DIR/proot/tmp
 export PROOT_LOADER=$DIR/proot/loader
+export DOTNET_GCHeapHardLimit=1C0000000
 
-# 检查必要的文件
-if [ ! -f "$DIR/rootfs/bin/node" ]; then
-    echo "错误: 未找到 Node.js 二进制文件"
+EXE=$1
+if [ -z "$EXE" ]; then
+    echo "必须指定执行参数，如 ./start.sh ./app/Lagrange.OneBot"
     exit 1
 fi
 
-if [ ! -f "$DIR/napcat.js" ]; then
-    echo "错误: 未找到 NapCat 入口文件"
-    exit 1
+if [ "$1" != "shell" ]; then
+    EXE_PATH=$(realpath $(dirname "$1"))
+    EXE_FN=$(basename "$1")
+else
+    EXE_PATH=$(pwd)
 fi
 
-# 启动 NapCat
-echo "启动 NapCat for Android..."
+$DIR/proot/proot -r $DIR/rootfs -w / -b /proc -b /dev -b /sys -b /data -b /sdcard -b $(pwd):/work -b $EXE_PATH:/root /bin/busybox sh /boot.sh $EXE_FN $2 $3 $4 $5 $6 $7
 
-# 使用 PRoot 运行 NapCat
-$DIR/proot/proot -r $DIR/rootfs -w / -b /proc -b /dev -b /sys -b /data -b /sdcard -b $(pwd):/work -b $DIR:/app /bin/busybox sh /boot.sh /app/napcat.js

@@ -1,0 +1,13 @@
+{
+  "name": "napcat-android",
+  "version": "1.0.0",
+  "description": "NapCat for Android",
+  "main": "napcat.js",
+  "scripts": {
+    "start": "node napcat.js"
+  },
+  "dependencies": {
+    "express": "^4.18.0",
+    "ws": "^8.12.0"
+  }
+}

@@ -3,12 +3,8 @@ name: Build APK
 on:
   push:
     branches: [ main, master ]
-    paths:
-      - 'NapCatAndroid/**'
   pull_request:
     branches: [ main, master ]
-    paths:
-      - 'NapCatAndroid/**'
   workflow_dispatch:
 
 jobs:
@@ -27,26 +23,22 @@ jobs:
         cache: gradle
 
     - name: Grant execute permission for gradlew
-      run: chmod +x NapCatAndroid/gradlew
+      run: chmod +x gradlew
 
     - name: Build Debug APK
-      run: |
-        cd NapCatAndroid
-        ./gradlew assembleDebug --no-daemon
+      run: ./gradlew assembleDebug --no-daemon
 
     - name: Build Release APK
-      run: |
-        cd NapCatAndroid
-        ./gradlew assembleRelease --no-daemon
+      run: ./gradlew assembleRelease --no-daemon
 
     - name: Upload Debug APK
       uses: actions/upload-artifact@v4
       with:
         name: napcat-debug
-        path: NapCatAndroid/app/build/outputs/apk/debug/*.apk
+        path: app/build/outputs/apk/debug/*.apk
 
     - name: Upload Release APK
       uses: actions/upload-artifact@v4
       with:
         name: napcat-release
-        path: NapCatAndroid/app/build/outputs/apk/release/*.apk
+        path: app/build/outputs/apk/release/*.apk

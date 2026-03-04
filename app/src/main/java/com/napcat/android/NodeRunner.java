@@ -97,8 +97,9 @@ public class NodeRunner {
 
             if (marker.exists()) {
                 log("Files already deployed");
-                // 即使已部署，也要确保关键文件有执行权限
+                // 即使已部署，也要确保所有关键文件和 rootfs 有正确权限
                 ensureExecutablePermissions();
+                log("Permissions re-verified");
                 return true;
             }
 
@@ -140,7 +141,38 @@ public class NodeRunner {
         setExecutablePermission(new File(filesDir, "proot/proot").getAbsolutePath());
         setExecutablePermission(new File(filesDir, "proot/loader").getAbsolutePath());
         setExecutablePermission(new File(filesDir, "node/node").getAbsolutePath());
+        
+        // 修复 rootfs 权限 - 递归设置 bin 和 lib 目录的权限
+        File rootfsDir = new File(filesDir, "rootfs");
+        fixRootfsPermissions(rootfsDir);
+        
         log("Executable permissions ensured");
+    }
+    
+    private void fixRootfsPermissions(File dir) {
+        if (!dir.exists() || !dir.isDirectory()) return;
+        
+        File[] files = dir.listFiles();
+        if (files == null) return;
+        
+        for (File file : files) {
+            // 设置目录权限为 755 (rwxr-xr-x)
+            if (file.isDirectory()) {
+                file.setExecutable(true, false);
+                file.setReadable(true, false);
+                file.setWritable(true, true);
+                fixRootfsPermissions(file); // 递归处理子目录
+            } else {
+                // 设置文件权限
+                file.setReadable(true, false);
+                file.setWritable(true, true);
+                // 对于 bin 和 lib 目录下的文件，设置执行权限
+                String path = file.getAbsolutePath();
+                if (path.contains("/bin/") || path.contains("/lib/") || path.contains("/sbin/")) {
+                    file.setExecutable(true, false);
+                }
+            }
+        }
     }
 
     private void copyAssetDir(String assetPath, File destDir) throws IOException {

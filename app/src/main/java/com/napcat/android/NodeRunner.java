@@ -144,16 +144,25 @@ public class NodeRunner {
         
         // 修复 rootfs 权限 - 递归设置 bin 和 lib 目录的权限
         File rootfsDir = new File(filesDir, "rootfs");
+        log("Fixing rootfs permissions: " + rootfsDir.getAbsolutePath());
         fixRootfsPermissions(rootfsDir);
         
         log("Executable permissions ensured");
     }
     
     private void fixRootfsPermissions(File dir) {
-        if (!dir.exists() || !dir.isDirectory()) return;
+        if (!dir.exists() || !dir.isDirectory()) {
+            log("fixRootfsPermissions: dir not found: " + dir.getAbsolutePath());
+            return;
+        }
         
         File[] files = dir.listFiles();
-        if (files == null) return;
+        if (files == null) {
+            log("fixRootfsPermissions: listFiles returned null");
+            return;
+        }
+        
+        log("fixRootfsPermissions: processing " + files.length + " items in " + dir.getName());
         
         for (File file : files) {
             // 设置目录权限为 755 (rwxr-xr-x)
@@ -170,6 +179,7 @@ public class NodeRunner {
                 String path = file.getAbsolutePath();
                 if (path.contains("/bin/") || path.contains("/lib/") || path.contains("/sbin/")) {
                     file.setExecutable(true, false);
+                    log("Set executable: " + file.getName());
                 }
             }
         }

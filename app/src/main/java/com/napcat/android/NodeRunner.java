@@ -4,14 +4,17 @@ import android.content.Context;
 import android.util.Log;
 
 import java.io.*;
-import java.nio.file.Files;
-import java.nio.file.StandardCopyOption;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
 
 public class NodeRunner {
     private static final String TAG = "NodeRunner";
     private Process napcatProcess;
     private boolean isRunning = false;
     private Context appContext;
+    private File logFile;
+    private SimpleDateFormat dateFormat = new SimpleDateFormat("HH:mm:ss", Locale.getDefault());
 
     public interface NodeRunnerCallback {
         void onOutput(String output);
@@ -22,26 +25,66 @@ public class NodeRunner {
 
     public NodeRunner(Context context) {
         this.appContext = context;
+        this.logFile = new File(context.getFilesDir(), "napcat.log");
+    }
+
+    private void log(String message) {
+        String timestamp = dateFormat.format(new Date());
+        String logLine = "[" + timestamp + "] " + message + "\n";
+        Log.d(TAG, logLine.trim());
+        
+        // 写入日志文件
+        try (FileWriter fw = new FileWriter(logFile, true)) {
+            fw.append(logLine);
+        } catch (IOException e) {
+            Log.e(TAG, "Failed to write log", e);
+        }
+    }
+
+    public String getLogContent() {
+        try {
+            return readFile(logFile);
+        } catch (IOException e) {
+            return "无法读取日志: " + e.getMessage();
+        }
+    }
+
+    public void clearLog() {
+        if (logFile.exists()) {
+            logFile.delete();
+        }
+    }
+
+    private String readFile(File file) throws IOException {
+        StringBuilder sb = new StringBuilder();
+        try (BufferedReader br = new BufferedReader(new FileReader(file))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                sb.append(line).append("\n");
+            }
+        }
+        return sb.toString();
     }
 
     public boolean startNapCat(NodeRunnerCallback callback) {
-        Log.d(TAG, "Starting NapCat with PRoot...");
+        log("Starting NapCat with PRoot...");
 
         try {
             if (isRunning) {
-                Log.w(TAG, "Already running");
+                log("Already running");
                 return false;
             }
 
             // 部署核心文件
             if (!deployFiles(callback)) {
+                log("Failed to deploy files");
                 if (callback != null) callback.onError("Failed to deploy files");
                 return false;
             }
 
             return startWithPRoot(callback);
         } catch (Exception e) {
-            Log.e(TAG, "Start failed", e);
+            log("Start failed: " + e.getMessage());
             if (callback != null) callback.onError(e.getMessage());
             return false;
         }
@@ -53,11 +96,11 @@ public class NodeRunner {
             File marker = new File(filesDir, ".napcat_deployed");
 
             if (marker.exists()) {
-                Log.d(TAG, "Files already deployed");
+                log("Files already deployed");
                 return true;
             }
 
-            Log.d(TAG, "Deploying assets...");
+            log("Deploying assets...");
             if (callback != null) callback.onProgress(0, "正在部署文件...");
 
             // 部署各个目录
@@ -68,18 +111,20 @@ public class NodeRunner {
             for (String dir : dirs) {
                 current++;
                 int percent = (current * 100) / total;
-                if (callback != null) callback.onProgress(percent, "正在部署 " + dir + "...");
+                String msg = "正在部署 " + dir + "...";
+                log(msg);
+                if (callback != null) callback.onProgress(percent, msg);
                 
                 File destDir = new File(filesDir, dir);
                 copyAssetDir(dir, destDir);
             }
 
             marker.createNewFile();
-            Log.d(TAG, "Assets deployed successfully");
+            log("Assets deployed successfully");
             if (callback != null) callback.onProgress(100, "文件部署完成");
             return true;
         } catch (Exception e) {
-            Log.e(TAG, "Deploy failed", e);
+            log("Deploy failed: " + e.getMessage());
             return false;
         }
     }
@@ -98,10 +143,8 @@ public class NodeRunner {
 
             String[] subFiles = appContext.getAssets().list(assetFile);
             if (subFiles != null && subFiles.length > 0) {
-                // 是目录
                 copyAssetDir(assetFile, destFile);
             } else {
-                // 是文件
                 copyAssetFile(assetFile, destFile);
             }
         }
@@ -133,6 +176,18 @@ public class NodeRunner {
 
             String prootBin = new File(prootDir, "proot").getAbsolutePath();
 
+            // 检查必要文件
+            if (!new File(prootBin).exists()) {
+                log("ERROR: proot not found at " + prootBin);
+                if (callback != null) callback.onError("proot not found");
+                return false;
+            }
+            if (!nodeFile.exists()) {
+                log("ERROR: node not found at " + nodeFile.getAbsolutePath());
+                if (callback != null) callback.onError("node not found");
+                return false;
+            }
+
             // 构建启动命令
             String[] command = {
                 prootBin,
@@ -156,7 +211,8 @@ public class NodeRunner {
                 "/node/node --no-warnings loadNapCat.js"
             };
 
-            Log.d(TAG, "Command: " + String.join(" ", command));
+            String cmdStr = String.join(" ", command);
+            log("Command: " + cmdStr);
 
             ProcessBuilder pb = new ProcessBuilder(command);
             pb.directory(napcatDir);
@@ -165,43 +221,51 @@ public class NodeRunner {
             pb.environment().put("PROOT_LOADER", new File(prootDir, "loader").getAbsolutePath());
             pb.environment().put("LD_LIBRARY_PATH", prootDir.getAbsolutePath());
 
+            log("Starting process...");
             napcatProcess = pb.start();
             isRunning = true;
+            log("Process started, PID: " + (napcatProcess.isAlive() ? "alive" : "dead"));
 
             // 输出线程
             new Thread(() -> {
                 try (BufferedReader r = new BufferedReader(new InputStreamReader(napcatProcess.getInputStream()))) {
                     String l;
                     while ((l = r.readLine()) != null && isRunning) {
-                        Log.d(TAG, "[OUT] " + l);
+                        log("[OUT] " + l);
                         if (callback != null) callback.onOutput(l);
                     }
-                } catch (Exception e) { }
+                } catch (Exception e) {
+                    log("[OUT] Exception: " + e.getMessage());
+                }
             }).start();
 
             new Thread(() -> {
                 try (BufferedReader r = new BufferedReader(new InputStreamReader(napcatProcess.getErrorStream()))) {
                     String l;
                     while ((l = r.readLine()) != null && isRunning) {
-                        Log.e(TAG, "[ERR] " + l);
+                        log("[ERR] " + l);
                         if (callback != null) callback.onError(l);
                     }
-                } catch (Exception e) { }
+                } catch (Exception e) {
+                    log("[ERR] Exception: " + e.getMessage());
+                }
             }).start();
 
             new Thread(() -> {
                 try {
                     int code = napcatProcess.waitFor();
                     isRunning = false;
+                    log("Process exited with code: " + code);
                     if (callback != null) callback.onExit(code);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
+                    log("Process interrupted");
                 }
             }).start();
 
             return true;
         } catch (Exception e) {
-            Log.e(TAG, "PRoot start failed", e);
+            log("PRoot start failed: " + e.getMessage());
             if (callback != null) callback.onError(e.getMessage());
             return false;
         }
@@ -209,6 +273,7 @@ public class NodeRunner {
 
     public void stopNapCat() {
         if (napcatProcess != null && isRunning) {
+            log("Stopping NapCat...");
             napcatProcess.destroy();
             isRunning = false;
         }

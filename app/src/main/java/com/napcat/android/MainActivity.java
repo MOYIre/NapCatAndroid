@@ -1,6 +1,8 @@
 package com.napcat.android;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.app.AlertDialog;
+
 import android.annotation.SuppressLint;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -20,6 +22,7 @@ import android.webkit.WebViewClient;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -32,6 +35,7 @@ public class MainActivity extends AppCompatActivity {
     private TextView statusText;
     private TextView errorText;
     private Button startButton;
+    private Button logButton;
     private ProgressBar progressBar;
 
     private Handler mainHandler;
@@ -39,6 +43,8 @@ public class MainActivity extends AppCompatActivity {
     private int webuiCheckAttempts = 0;
     private static final int MAX_WEBUI_CHECKS = 60;
     private boolean webuiLoaded = false;
+
+    private NodeRunner nodeRunner;
 
     private final BroadcastReceiver serviceReceiver = new BroadcastReceiver() {
         @Override
@@ -65,7 +71,10 @@ public class MainActivity extends AppCompatActivity {
         statusText = findViewById(R.id.status);
         errorText = findViewById(R.id.error_text);
         startButton = findViewById(R.id.start_service);
+        logButton = findViewById(R.id.log_button);
         progressBar = findViewById(R.id.progress);
+
+        nodeRunner = new NodeRunner(this);
 
         setupWebView();
 
@@ -78,6 +87,8 @@ public class MainActivity extends AppCompatActivity {
             startNapCatService();
         });
 
+        logButton.setOnClickListener(v -> showLogDialog());
+
         IntentFilter filter = new IntentFilter("com.napcat.android.SERVICE_STATUS");
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             registerReceiver(serviceReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
@@ -87,6 +98,29 @@ public class MainActivity extends AppCompatActivity {
 
         // 自动启动服务
         startNapCatService();
+    }
+
+    private void showLogDialog() {
+        String log = nodeRunner.getLogContent();
+        
+        TextView textView = new TextView(this);
+        textView.setText(log.isEmpty() ? "暂无日志" : log);
+        textView.setTextSize(10);
+        textView.setPadding(32, 32, 32, 32);
+        textView.setTextIsSelectable(true);
+
+        ScrollView scrollView = new ScrollView(this);
+        scrollView.addView(textView);
+
+        new AlertDialog.Builder(this)
+            .setTitle("运行日志")
+            .setView(scrollView)
+            .setPositiveButton("关闭", null)
+            .setNegativeButton("清空", (d, w) -> {
+                nodeRunner.clearLog();
+                Toast.makeText(this, "日志已清空", Toast.LENGTH_SHORT).show();
+            })
+            .show();
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -125,7 +159,6 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
                 Log.e(TAG, "WebView error: " + description + " for " + failingUrl);
-                // 忽略错误，继续重试
             }
         });
 
@@ -157,8 +190,11 @@ public class MainActivity extends AppCompatActivity {
                 updateStatus(status, message != null ? message : "下载中...");
                 break;
 
+            case "deploying":
+                updateStatus(status, message != null ? message : "部署中...");
+                break;
+
             case "ready":
-                // 服务就绪，开始检查 WebUI
                 serviceReady = true;
                 updateStatus(status, "服务已就绪，正在连接 WebUI...");
                 startWebUICheck();
@@ -175,7 +211,7 @@ public class MainActivity extends AppCompatActivity {
             case "stopped":
                 updateStatus(status, message);
                 if (!webuiLoaded) {
-                    showError("服务已停止");
+                    showError("服务已停止，点击查看日志");
                 }
                 break;
 
@@ -197,17 +233,15 @@ public class MainActivity extends AppCompatActivity {
         }
 
         if (webuiCheckAttempts >= MAX_WEBUI_CHECKS) {
-            showError("无法连接到 WebUI，请检查日志");
+            showError("无法连接到 WebUI，点击查看日志");
             return;
         }
 
         webuiCheckAttempts++;
         Log.d(TAG, "Checking WebUI... attempt " + webuiCheckAttempts);
 
-        // 尝试加载 WebUI
         webView.loadUrl(WEBUI_URL);
 
-        // 延迟后检查是否成功
         mainHandler.postDelayed(() -> {
             if (!webuiLoaded && serviceReady) {
                 checkWebUI();
@@ -226,7 +260,7 @@ public class MainActivity extends AppCompatActivity {
         mainHandler.post(() -> {
             statusText.setText(message != null ? message : status);
 
-            if ("downloading".equals(status)) {
+            if ("downloading".equals(status) || "deploying".equals(status)) {
                 progressBar.setVisibility(View.VISIBLE);
                 errorText.setVisibility(View.GONE);
                 startButton.setVisibility(View.GONE);
@@ -245,6 +279,7 @@ public class MainActivity extends AppCompatActivity {
             progressBar.setVisibility(View.GONE);
             startButton.setVisibility(View.VISIBLE);
             startButton.setText("重试");
+            logButton.setVisibility(View.VISIBLE);
             serviceReady = false;
         });
     }

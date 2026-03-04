@@ -211,8 +211,9 @@ public class NodeRunner {
             File prootTmpDir = new File(prootDir, "tmp");
             if (!prootTmpDir.exists()) {
                 prootTmpDir.mkdirs();
-                log("Created PROOT_TMP directory: " + prootTmpDir.getAbsolutePath());
+                log("Created PROOT_TMP_DIR: " + prootTmpDir.getAbsolutePath());
             }
+            String prootTmpPath = prootTmpDir.getAbsolutePath();
 
             // 构建启动命令 - 使用 linker64 加载 proot 绕过 SELinux 限制
             // Android 不允许直接执行应用私有目录中的二进制文件
@@ -246,9 +247,13 @@ public class NodeRunner {
             ProcessBuilder pb = new ProcessBuilder(command);
             pb.directory(napcatDir);
             pb.environment().remove("LD_PRELOAD");
-            pb.environment().put("PROOT_TMP", new File(prootDir, "tmp").getAbsolutePath());
+            // 设置 PROOT_TMP_DIR 环境变量（正确的变量名）
+            pb.environment().put("PROOT_TMP_DIR", prootTmpPath);
+            pb.environment().put("PROOT_TMP", prootTmpPath);
+            pb.environment().put("TMPDIR", prootTmpPath);
             pb.environment().put("PROOT_LOADER", new File(prootDir, "loader").getAbsolutePath());
             pb.environment().put("LD_LIBRARY_PATH", prootDir.getAbsolutePath());
+            log("Environment: PROOT_TMP_DIR=" + prootTmpPath);
 
             log("Starting process...");
             napcatProcess = pb.start();

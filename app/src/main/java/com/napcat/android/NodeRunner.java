@@ -300,6 +300,8 @@ public class NodeRunner {
             pb.environment().put("LD_LIBRARY_PATH", prootDir.getAbsolutePath());
             pb.environment().put("PROOT_NO_SECCOMP", "1");  // 禁用 seccomp 避免 Android 兼容性问题
             pb.environment().put("PROOT_ASSUME_MEMFD_UNSUPPORTED", "1");  // 某些 Android 不支持 memfd
+            pb.environment().put("PROOT_FORCE_FOREIGN_BINARY", "1");  // 强制将程序视为外部二进制
+            pb.environment().put("PROOT_FORCE_KOMPAT", "1");  // 强制兼容模式
             log("Environment: PROOT_TMP_DIR=" + prootTmpPath + ", PROOT_LOADER=" + loaderPath);
 
             log("Starting process...");

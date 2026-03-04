@@ -296,10 +296,12 @@ public class NodeRunner {
             pb.environment().put("PROOT_TMP_DIR", prootTmpPath);
             pb.environment().put("PROOT_TMP", prootTmpPath);
             pb.environment().put("TMPDIR", prootTmpPath);
-            pb.environment().put("PROOT_LOADER", new File(prootDir, "loader").getAbsolutePath());
+            String loaderPath = new File(prootDir, "loader").getAbsolutePath();
+            pb.environment().put("PROOT_LOADER", loaderPath);
             pb.environment().put("LD_LIBRARY_PATH", prootDir.getAbsolutePath());
             pb.environment().put("PROOT_NO_SECCOMP", "1");  // 禁用 seccomp 避免 Android 兼容性问题
-            log("Environment: PROOT_TMP_DIR=" + prootTmpPath);
+            pb.environment().put("PROOT_ASSUME_MEMFD_UNSUPPORTED", "1");  // 某些 Android 不支持 memfd
+            log("Environment: PROOT_TMP_DIR=" + prootTmpPath + ", PROOT_LOADER=" + loaderPath);
 
             log("Starting process...");
             napcatProcess = pb.start();

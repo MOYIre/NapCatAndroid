@@ -5,6 +5,8 @@ import androidx.appcompat.app.AlertDialog;
 
 import android.annotation.SuppressLint;
 import android.content.BroadcastReceiver;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -112,6 +114,9 @@ public class MainActivity extends AppCompatActivity {
         ScrollView scrollView = new ScrollView(this);
         scrollView.addView(textView);
 
+        // 滚动到底部
+        scrollView.post(() -> scrollView.fullScroll(View.FOCUS_DOWN));
+
         new AlertDialog.Builder(this)
             .setTitle("运行日志")
             .setView(scrollView)
@@ -119,6 +124,12 @@ public class MainActivity extends AppCompatActivity {
             .setNegativeButton("清空", (d, w) -> {
                 nodeRunner.clearLog();
                 Toast.makeText(this, "日志已清空", Toast.LENGTH_SHORT).show();
+            })
+            .setNeutralButton("复制", (d, w) -> {
+                ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+                ClipData clip = ClipData.newPlainText("NapCat Log", log);
+                clipboard.setPrimaryClip(clip);
+                Toast.makeText(this, "日志已复制到剪贴板", Toast.LENGTH_SHORT).show();
             })
             .show();
     }

@@ -257,12 +257,15 @@ public class NodeRunner {
             }
             String prootTmpPath = prootTmpDir.getAbsolutePath();
 
-            // 构建启动命令 - 使用 linker64 加载 proot 绕过 SELinux 限制
-            // Android 不允许直接执行应用私有目录中的二进制文件
-            // 但可以通过 /system/bin/linker64 来加载执行
+            // 构建启动命令
+            // 使用 linker64 加载 proot（Android SELinux 限制需要这样做）
+            // proot 使用 PROOT_LOADER 环境变量来指定 loader 路径
+            // loader 负责在 proot 环境中加载 Linux ELF 二进制文件
+            String loaderPath = new File(prootDir, "loader").getAbsolutePath();
             String[] command = {
                 "/system/bin/linker64",
                 prootBin,
+                "-v", "1",  // 启用调试输出
                 "-r", rootfsDir.getAbsolutePath(),
                 "-w", "/root",
                 "-b", "/proc",
@@ -295,6 +298,7 @@ public class NodeRunner {
             pb.environment().put("TMPDIR", prootTmpPath);
             pb.environment().put("PROOT_LOADER", new File(prootDir, "loader").getAbsolutePath());
             pb.environment().put("LD_LIBRARY_PATH", prootDir.getAbsolutePath());
+            pb.environment().put("PROOT_NO_SECCOMP", "1");  // 禁用 seccomp 避免 Android 兼容性问题
             log("Environment: PROOT_TMP_DIR=" + prootTmpPath);
 
             log("Starting process...");

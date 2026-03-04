@@ -207,6 +207,13 @@ public class NodeRunner {
                 return false;
             }
 
+            // 创建 proot 临时目录
+            File prootTmpDir = new File(prootDir, "tmp");
+            if (!prootTmpDir.exists()) {
+                prootTmpDir.mkdirs();
+                log("Created PROOT_TMP directory: " + prootTmpDir.getAbsolutePath());
+            }
+
             // 构建启动命令 - 使用 linker64 加载 proot 绕过 SELinux 限制
             // Android 不允许直接执行应用私有目录中的二进制文件
             // 但可以通过 /system/bin/linker64 来加载执行

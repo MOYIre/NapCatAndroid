@@ -296,7 +296,6 @@ public class NodeRunner {
             pb.environment().put("PROOT_TMP_DIR", prootTmpPath);
             pb.environment().put("PROOT_TMP", prootTmpPath);
             pb.environment().put("TMPDIR", prootTmpPath);
-            String loaderPath = new File(prootDir, "loader").getAbsolutePath();
             pb.environment().put("PROOT_LOADER", loaderPath);
             pb.environment().put("LD_LIBRARY_PATH", prootDir.getAbsolutePath());
             pb.environment().put("PROOT_NO_SECCOMP", "1");  // 禁用 seccomp 避免 Android 兼容性问题

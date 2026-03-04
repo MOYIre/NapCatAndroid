@@ -262,21 +262,36 @@ public class NodeRunner {
             // proot 使用 PROOT_LOADER 环境变量来指定 loader 路径
             // loader 负责在 proot 环境中加载 Linux ELF 二进制文件
             String loaderPath = new File(prootDir, "loader").getAbsolutePath();
+            // 参考 proot-distro 的参数设置
+            // 关键：需要绑定 /apex, /system, /vendor 等系统目录，否则 loader 无法工作
             String[] command = {
                 "/system/bin/linker64",
                 prootBin,
                 "-v", "1",  // 启用调试输出
                 "-r", rootfsDir.getAbsolutePath(),
                 "-w", "/root",
+                // 系统目录绑定 - loader 需要这些
+                "-b", "/apex",
+                "-b", "/system",
+                "-b", "/system_ext",
+                "-b", "/vendor",
+                "-b", "/product",
+                "-b", "/odm",
+                "-b", "/linkerconfig",
+                // 基础文件系统
                 "-b", "/proc",
                 "-b", "/dev",
                 "-b", "/sys",
+                // 用户数据
                 "-b", "/data",
                 "-b", "/sdcard",
+                "-b", "/storage",
+                // 应用目录映射
                 "-b", napcatDir.getAbsolutePath() + ":/root",
                 "-b", qqntDir.getAbsolutePath() + ":/qqnt",
                 "-b", new File(filesDir, "node").getAbsolutePath() + ":/node",
-                "/bin/bash", "-c",
+                // 使用 /bin/sh 而不是 bash，因为 Debian 默认 sh 是 dash
+                "/bin/sh", "-c",
                 "export PATH=/bin:/sbin:/usr/bin:/usr/sbin:/node; " +
                 "export HOME=/root; " +
                 "export LD_LIBRARY_PATH=/lib/aarch64-linux-gnu:/usr/lib/aarch64-linux-gnu:/qqnt; " +

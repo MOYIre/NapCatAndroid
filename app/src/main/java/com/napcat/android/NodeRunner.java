@@ -97,6 +97,8 @@ public class NodeRunner {
 
             if (marker.exists()) {
                 log("Files already deployed");
+                // 即使已部署，也要确保关键文件有执行权限
+                ensureExecutablePermissions();
                 return true;
             }
 
@@ -119,6 +121,9 @@ public class NodeRunner {
                 copyAssetDir(dir, destDir);
             }
 
+            // 设置关键文件执行权限
+            ensureExecutablePermissions();
+
             marker.createNewFile();
             log("Assets deployed successfully");
             if (callback != null) callback.onProgress(100, "文件部署完成");
@@ -127,6 +132,15 @@ public class NodeRunner {
             log("Deploy failed: " + e.getMessage());
             return false;
         }
+    }
+
+    private void ensureExecutablePermissions() {
+        File filesDir = appContext.getFilesDir();
+        // 设置关键二进制文件的执行权限
+        setExecutablePermission(new File(filesDir, "proot/proot").getAbsolutePath());
+        setExecutablePermission(new File(filesDir, "proot/loader").getAbsolutePath());
+        setExecutablePermission(new File(filesDir, "node/node").getAbsolutePath());
+        log("Executable permissions ensured");
     }
 
     private void copyAssetDir(String assetPath, File destDir) throws IOException {
@@ -175,6 +189,11 @@ public class NodeRunner {
             File nodeFile = new File(filesDir, "node/node");
 
             String prootBin = new File(prootDir, "proot").getAbsolutePath();
+
+            // 设置执行权限 - 关键步骤！
+            setExecutablePermission(prootBin);
+            setExecutablePermission(new File(prootDir, "loader").getAbsolutePath());
+            setExecutablePermission(nodeFile.getAbsolutePath());
 
             // 检查必要文件
             if (!new File(prootBin).exists()) {
@@ -268,6 +287,29 @@ public class NodeRunner {
             log("PRoot start failed: " + e.getMessage());
             if (callback != null) callback.onError(e.getMessage());
             return false;
+        }
+    }
+
+    private void setExecutablePermission(String filePath) {
+        try {
+            File file = new File(filePath);
+            if (!file.exists()) {
+                log("File not found for chmod: " + filePath);
+                return;
+            }
+            
+            // 先尝试 Java API
+            if (file.setExecutable(true, false)) {
+                log("Set executable via Java API: " + filePath);
+            }
+            
+            // 再用 shell 命令确保权限生效
+            ProcessBuilder pb = new ProcessBuilder("chmod", "755", filePath);
+            Process p = pb.start();
+            int exitCode = p.waitFor();
+            log("chmod 755 " + filePath + " -> exit code: " + exitCode);
+        } catch (Exception e) {
+            log("Failed to set executable permission for " + filePath + ": " + e.getMessage());
         }
     }
 

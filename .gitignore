@@ -14,3 +14,4 @@ local.properties
 # OS
 .DS_Store
 Thumbs.db
+apk_download/

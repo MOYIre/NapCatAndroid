@@ -162,6 +162,8 @@ public class NodeRunner {
             pb.directory(napcatDir);
             pb.environment().remove("LD_PRELOAD");
             pb.environment().put("PROOT_TMP", new File(prootDir, "tmp").getAbsolutePath());
+            pb.environment().put("PROOT_LOADER", new File(prootDir, "loader").getAbsolutePath());
+            pb.environment().put("LD_LIBRARY_PATH", prootDir.getAbsolutePath());
 
             napcatProcess = pb.start();
             isRunning = true;

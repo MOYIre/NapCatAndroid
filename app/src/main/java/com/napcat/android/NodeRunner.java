@@ -207,8 +207,11 @@ public class NodeRunner {
                 return false;
             }
 
-            // 构建启动命令
+            // 构建启动命令 - 使用 linker64 加载 proot 绕过 SELinux 限制
+            // Android 不允许直接执行应用私有目录中的二进制文件
+            // 但可以通过 /system/bin/linker64 来加载执行
             String[] command = {
+                "/system/bin/linker64",
                 prootBin,
                 "-r", rootfsDir.getAbsolutePath(),
                 "-w", "/root",
